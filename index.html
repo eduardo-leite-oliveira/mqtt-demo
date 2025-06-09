@@ -61,7 +61,7 @@
     }
 
     #status::before {
-      content: "🔴 ";
+      content: " ";
     }
 
     #status.conectado {
@@ -85,9 +85,6 @@
 <h1>Demo MQTT</h1>
 <p>Status da conexão: <strong id="status">Desconectado</strong></p>
 
-<h2>Leitura dos Sensores</h2>
-<pre id="sensorData">Aguardando dados do Arduino Nano 33...</pre>
-
 <h2>Sensores</h2>
 <p><strong>Temperatura:</strong> <span id="temp">--</span> °C</p>
 <p><strong>Umidade:</strong> <span id="hum">--</span> %</p>
@@ -101,10 +98,9 @@
 
 <h2>Controle por voz</h2>
 <button onclick="startVoiceRecognition()">🎤 Ouvir comando de voz</button>
-<p><em>Exemplos: "ligar led verde", "ligar led vermelho"</em></p>
 <p><strong>Último comando de voz:</strong> <span id="comandoVoz">--</span></p>
 
-<h3>Dimerização LED Azul</h3>
+<h2>Dimerização LED Azul</h2>
 <input type="range" id="pwmSlider" min="0" max="100" value="0" oninput="updatePWMLabel(this.value)" onchange="sendPWM(this.value)">
 <span id="pwmValue">0%</span>
 
