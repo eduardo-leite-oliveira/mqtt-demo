@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo MQTT</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+      background-color: #f9f9f9;
+    }
+
+    h1, h2, h3 {
+      color: #2c3e50;
+      margin-top: 20px;
+    }
+
+    button {
+      margin: 5px 10px 5px 0;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background: #2980b9;
+      color: white;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #3498db;
+      cursor: pointer;
+    }
+
+    pre {
+      background: #ecf0f1;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+
+    p {
+      font-size: 16px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    #pwmValue {
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    #status {
+      font-weight: bold;
+      color: #c0392b;
+    }
+
+    #status::before {
+      content: "🔴 ";
+    }
+
+    #status.conectado {
+      color: #27ae60;
+    }
+
+    #status.conectado::before {
+      content: "🟢 ";
+    }
+
+    #comandoVoz {
+      display: inline-block;
+      font-style: italic;
+      color: #555;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Demo MQTT</h1>
+<p>Status da conexão: <strong id="status">Desconectado</strong></p>
+
+<h2>Leitura dos Sensores</h2>
+<pre id="sensorData">Aguardando dados do Arduino Nano 33...</pre>
+
+<h2>Sensores</h2>
+<p><strong>Temperatura:</strong> <span id="temp">--</span> °C</p>
+<p><strong>Umidade:</strong> <span id="hum">--</span> %</p>
+<p><strong>Pressão:</strong> <span id="press">--</span> hPa</p>
+
+<h2>Controlo LEDs</h2>
+<button onclick="sendCommand('verde_on')">Ligar LED Verde</button>
+<button onclick="sendCommand('verde_off')">Desligar LED Verde</button>
+<button onclick="sendCommand('vermelho_on')">Ligar LED Vermelho</button>
+<button onclick="sendCommand('vermelho_off')">Desligar LED Vermelho</button>
+
+<h2>Controle por voz</h2>
+<button onclick="startVoiceRecognition()">🎤 Ouvir comando de voz</button>
+<p><em>Exemplos: "ligar led verde", "ligar led vermelho"</em></p>
+<p><strong>Último comando de voz:</strong> <span id="comandoVoz">--</span></p>
+
+<h3>Dimerização LED Azul</h3>
+<input type="range" id="pwmSlider" min="0" max="100" value="0" oninput="updatePWMLabel(this.value)" onchange="sendPWM(this.value)">
+<span id="pwmValue">0%</span>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+  const brokerUrl = "wss://broker.hivemq.com:8884/mqtt";
+  const sensorTopic = "nano33/sensores";
+  const commandoTopic = "nano33/comandos";
+
+  const client = mqtt.connect(brokerUrl);
+  const statusEl = document.getElementById("status");
+
+  client.on("connect", () => {
+    statusEl.textContent = "Conectado ✅";
+    client.subscribe(sensorTopic);
+  });
+
+  client.on("error", (err) => {
+    statusEl.textContent = "Erro: " + err.message;
+  });
+
+  client.on("message", (topic, message) => {
+    if (topic === sensorTopic) {
+      try {
+        const dados = JSON.parse(message.toString());
+        document.getElementById("temp").textContent = dados.temperatura;
+        document.getElementById("hum").textContent = dados.umidade;
+        document.getElementById("press").textContent = dados.pressao;
+        document.getElementById("sensorData").textContent = JSON.stringify(dados, null, 2);
+      } catch (e) {
+        console.error("Erro ao processar JSON:", e);
+      }
+    }
+  });
+
+  function sendCommand(cmd) {
+    const comando = { command: cmd };
+    client.publish(comandoTopic, JSON.stringify(comando));
+  }
+  
+  function updatePWMLabel(value) {
+    document.getElementById("pwmValue").textContent = value + "%";
+  }
+
+  function sendPWM(value) {
+    const msg = { command: "azul_pwm", value: parseInt(value) };
+    if (client.connected) {
+      client.publish(commandTopic, JSON.stringify(msg));
+    } else {
+      alert("Não conectado ao broker MQTT");
+    }
+  }
+
+  // Reconhecimento de voz
+  function startVoiceRecognition() {
+    if (!('webkitSpeechRecognition' in window)) {
+      alert("Seu navegador não suporta reconhecimento de voz");
+      return;
+    }
+
+    const recognition = new webkitSpeechRecognition();
+    recognition.lang = "pt-PT"; // ou "pt-BR"
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.toLowerCase();
+      console.log("Voz detectada:", transcript);
+      document.getElementById("comandoVoz").textContent = transcript;
+
+      if (transcript.includes("ligar led verde")) {
+        sendCommand("verde_on");
+      } else if (transcript.includes("ligar led vermelho")) {
+        sendCommand("vermelho_on");
+      } else if (transcript.includes("desligar led vermelho")) {
+        sendCommand("vermelho_off");
+      } else if (transcript.includes("desligar led verde")) {
+        sendCommand("verde_off");
+      } else {
+        alert("Comando de voz não reconhecido: " + transcript);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Erro no reconhecimento de voz:", event.error);
+    };
+
+    recognition.start();
+  }
+</script>
+
+</body>
+</html>
