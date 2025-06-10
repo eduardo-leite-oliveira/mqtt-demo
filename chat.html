@@ -1,117 +1,160 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chat MQTT</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MQTT Chat</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; background: #f5f5f5; }
-    h1 { color: #2c3e50; }
-    input, button { margin: 5px 0; padding: 10px; font-size: 1em; width: 100%; }
-    #mensagens { margin-top: 20px; background: #fff; padding: 10px; border: 1px solid #ccc; height: 300px; overflow-y: auto; }
-    .msg { border-bottom: 1px solid #eee; padding: 5px 0; }
-    .topico { font-weight: bold; }
-    .hora { color: #999; font-size: 0.9em; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+
+    input, button, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #log {
+      background: #fff;
+      padding: 15px;
+      height: 300px;
+      overflow-y: auto;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      white-space: pre-wrap;
+    }
+
+    .connected {
+      color: green;
+      font-weight: bold;
+    }
+
+    .disconnected {
+      color: red;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
+  <h1>MQTT Chat - Demo</h1>
 
-<h1>Chat MQTT</h1>
+  <label for="broker">Broker (ex: wss://broker.hivemq.com:8884/mqtt)</label>
+  <input type="text" id="broker" value="wss://broker.hivemq.com:8884/mqtt">
 
-<label>Client ID:</label>
-<input type="text" id="clientId" placeholder="Seu nome ou identificador" />
+  <label for="clientId">Client ID</label>
+  <input type="text" id="clientId" placeholder="Seu nome ou identificador">
 
-<label>Tópico:</label>
-<input type="text" id="topico" placeholder="ex: apresentacao/mqtt" />
+  <label for="topic">Tópico</label>
+  <input type="text" id="topic" placeholder="Ex: teste/chat">
 
-<label>Mensagem:</label>
-<input type="text" id="mensagem" placeholder="Digite sua mensagem" />
+  <button onclick="connect()">Conectar</button>
+  <p id="status" class="disconnected">Desconectado</p>
 
-<button onclick="conectar()">Conectar</button>
-<button onclick="enviarMensagem()">Enviar</button>
+  <label for="message">Mensagem</label>
+  <input type="text" id="message" placeholder="Digite sua mensagem">
 
-<div id="mensagens"></div>
+  <button onclick="publish()">Publicar</button>
 
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script>
-  let client = null;
+  <div id="log"></div>
 
-  function conectar() {
-    const clientId = document.getElementById("clientId").value || "cliente_" + Math.random().toString(16).substr(2, 8);
-    const topico = document.getElementById("topico").value;
+  <script>
+    let client;
 
-    if (!topico) {
-      alert("Digite um tópico antes de conectar.");
-      return;
+    function log(msg) {
+      const logBox = document.getElementById("log");
+      logBox.innerText += msg + "\n";
+      logBox.scrollTop = logBox.scrollHeight;
     }
 
-    const options = {
-      clientId: clientId,
-      clean: true,
-      connectTimeout: 4000,
-      reconnectPeriod: 4000
-    };
+    function connect() {
+      const broker = document.getElementById("broker").value;
+      const clientId = document.getElementById("clientId").value || "anon_" + Math.random().toString(16).substr(2, 8);
+      const topic = document.getElementById("topic").value;
 
-    // ATENÇÃO: Usar WebSocket para navegador
-    client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt", options);
+      client = mqtt.connect(broker, { clientId });
 
-    client.on("connect", () => {
-      logMensagem("✅ Conectado como <strong>" + clientId + "</strong>");
-      client.subscribe(topico, (err) => {
-        if (!err) logMensagem("📡 Subscrito ao tópico <strong>" + topico + "</strong>");
+      client.on("connect", () => {
+        log(`✅ Conectado como ${clientId}`);
+        document.getElementById("status").textContent = "Conectado";
+        document.getElementById("status").className = "connected";
+        client.subscribe(topic, () => {
+          log(`📡 Inscrito no tópico ${topic}`);
+        });
       });
-    });
 
-    client.on('message', (topic, message) => {
-      const hora = new Date().toLocaleTimeString();
-      let payload = message.toString();
-      let remetente = "Desconhecido";
+      client.on("message", (topic, message) => {
+        const hora = new Date().toLocaleTimeString();
+        let payload = message.toString();
+        let remetente = "Desconhecido";
 
-      // tenta extrair clientId se for JSON
-      try {
-        const obj = JSON.parse(payload);
-        if (obj.clientId) {
-          remetente = obj.clientId;
-        }
-        // se quiser só mostrar uma mensagem específica do JSON, pode ajustar payload aqui
-      } catch (e) {
-        // não é JSON, deixar payload igual
-      }
+        try {
+          const obj = JSON.parse(payload);
+          if (obj.clientId && obj.mensagem) {
+            remetente = obj.clientId;
+            payload = obj.mensagem;
+          }
+        } catch (e) {}
 
-      log(`[${hora}] [${topic}]\n${remetente}: ${payload}\n`);
-    });
+        log(`[${hora}] [${topic}]\n${remetente}: ${payload}`);
+      });
 
+      client.on("error", (err) => {
+        log("❌ Erro: " + err.message);
+        document.getElementById("status").textContent = "Erro na conexão";
+        document.getElementById("status").className = "disconnected";
+      });
 
-    client.on("error", err => {
-      logMensagem("❌ Erro: " + err.message);
-    });
-  }
-
-  function enviarMensagem() {
-    const topico = document.getElementById("topico").value;
-    const mensagem = document.getElementById("mensagem").value;
-    const remetente = document.getElementById("clientId").value;
-
-    if (!client || !client.connected) {
-      alert("Você precisa se conectar primeiro.");
-      return;
+      client.on("close", () => {
+        document.getElementById("status").textContent = "Desconectado";
+        document.getElementById("status").className = "disconnected";
+        log("🔌 Conexão encerrada");
+      });
     }
 
-    if (!mensagem || !topico) return;
+    function publish() {
+      const topic = document.getElementById("topic").value;
+      const mensagem = document.getElementById("message").value;
+      const clientId = document.getElementById("clientId").value || "anon";
 
-    const payload = `[${remetente}]: ${mensagem}`;
-    client.publish(topico, payload);
-    document.getElementById("mensagem").value = "";
-  }
-
-  function logMensagem(html) {
-    const div = document.createElement("div");
-    div.classList.add("msg");
-    div.innerHTML = html;
-    document.getElementById("mensagens").appendChild(div);
-    document.getElementById("mensagens").scrollTop = document.getElementById("mensagens").scrollHeight;
-  }
-</script>
-
+      if (client && client.connected) {
+        const payload = JSON.stringify({ clientId, mensagem });
+        client.publish(topic, payload);
+        document.getElementById("message").value = "";
+      } else {
+        alert("Não conectado");
+      }
+    }
+  </script>
 </body>
 </html>
