@@ -62,13 +62,25 @@
       });
     });
 
-    client.on("message", (topic, message, packet) => {
+    client.on('message', (topic, message) => {
       const hora = new Date().toLocaleTimeString();
-      const remetente = packet.properties && packet.properties.userProperties && packet.properties.userProperties.clientId
-        ? packet.properties.userProperties.clientId
-        : "Desconhecido";
-      logMensagem(`<span class="hora">[${hora}]</span> <span class="topico">${topic}</span><br><strong>${remetente}:</strong> ${message}`);
+      let payload = message.toString();
+      let remetente = "Desconhecido";
+
+      // tenta extrair clientId se for JSON
+      try {
+        const obj = JSON.parse(payload);
+        if (obj.clientId) {
+          remetente = obj.clientId;
+        }
+        // se quiser só mostrar uma mensagem específica do JSON, pode ajustar payload aqui
+      } catch (e) {
+        // não é JSON, deixar payload igual
+      }
+
+      log(`[${hora}] [${topic}]\n${remetente}: ${payload}\n`);
     });
+
 
     client.on("error", err => {
       logMensagem("❌ Erro: " + err.message);
