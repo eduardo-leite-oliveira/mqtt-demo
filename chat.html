@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cliente MQTT (Chat)</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      background: #f7f7f7;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    input, button, select, textarea {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    #messages {
+      background: #ecf0f1;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      margin-top: 10px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .connected {
+      color: green;
+    }
+    .disconnected {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Cliente MQTT (Chat)</h1>
+
+<label>Broker (wss):</label>
+<input type="text" id="broker" value="wss://broker.hivemq.com:8884/mqtt">
+
+<label>ID do Cliente:</label>
+<input type="text" id="clientId" value="mqtt_demo_chat">
+
+<label>Tópico para Assinar:</label>
+<input type="text" id="topic" value="demo/chat">
+
+<button onclick="connectMQTT()">Conectar</button>
+<p>Status: <span id="status" class="disconnected">Desconectado</span></p>
+
+<div id="chatArea" style="display:none;">
+  <label>Mensagem:</label>
+  <textarea id="messageToSend" rows="2" placeholder="Digite sua mensagem..."></textarea>
+  <button onclick="sendMessage()">Publicar Mensagem</button>
+
+  <h3>Mensagens Recebidas:</h3>
+  <div id="messages"></div>
+</div>
+
+<script>
+  let client;
+
+  function connectMQTT() {
+    const broker = document.getElementById("broker").value;
+    const clientId = document.getElementById("clientId").value + "_" + Math.floor(Math.random() * 10000);
+    const topic = document.getElementById("topic").value;
+
+    client = mqtt.connect(broker, { clientId });
+
+    client.on("connect", () => {
+      document.getElementById("status").textContent = "Conectado";
+      document.getElementById("status").className = "connected";
+      client.subscribe(topic);
+      document.getElementById("chatArea").style.display = "block";
+    });
+
+    client.on("message", (t, message) => {
+      const msgEl = document.getElementById("messages");
+      const text = `[${new Date().toLocaleTimeString()}] ${message.toString()}`;
+      msgEl.textContent += text + "\n";
+      msgEl.scrollTop = msgEl.scrollHeight;
+    });
+
+    client.on("error", err => {
+      alert("Erro: " + err.message);
+    });
+
+    client.on("close", () => {
+      document.getElementById("status").textContent = "Desconectado";
+      document.getElementById("status").className = "disconnected";
+      document.getElementById("chatArea").style.display = "none";
+    });
+  }
+
+  function sendMessage() {
+    const topic = document.getElementById("topic").value;
+    const msg = document.getElementById("messageToSend").value;
+    if (client && client.connected) {
+      client.publish(topic, msg);
+      document.getElementById("messageToSend").value = "";
+    } else {
+      alert("Não conectado");
+    }
+  }
+</script>
+
+</body>
+</html>
