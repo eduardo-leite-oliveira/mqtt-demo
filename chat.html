@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MQTT Chat</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
@@ -10,91 +10,88 @@
       font-family: Arial, sans-serif;
       background: #f2f2f2;
       padding: 20px;
-      max-width: 800px;
+      max-width: 600px;
       margin: auto;
     }
-
     h1 {
       text-align: center;
       color: #2c3e50;
     }
-
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 10px;
-    }
-
-    input, button, select {
-      width: 100%;
+    input, button {
       padding: 10px;
-      margin-top: 5px;
-      margin-bottom: 15px;
       font-size: 16px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
     }
-
-    button {
-      background-color: #3498db;
-      color: white;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #2980b9;
-    }
-
     #log {
       background: #fff;
+      border: 1px solid #ccc;
       padding: 15px;
       height: 300px;
       overflow-y: auto;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+      margin-top: 10px;
       white-space: pre-wrap;
+      font-size: 14px;
     }
-
+    #status {
+      font-weight: bold;
+      margin-top: 10px;
+    }
     .connected {
       color: green;
-      font-weight: bold;
     }
-
     .disconnected {
       color: red;
-      font-weight: bold;
+    }
+    .form-section {
+      margin-bottom: 15px;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #2980b9;
     }
   </style>
 </head>
 <body>
-  <h1>MQTT Chat - Demo</h1>
+  <h1>MQTT Chat</h1>
 
-  <label for="broker">Broker</label>
-  <input type="text" id="broker" value="wss://broker.hivemq.com:8884/mqtt">
+  <div class="form-section">
+    <label>Broker MQTT (ex: <code>wss://broker.hivemq.com:8884/mqtt</code>):</label>
+    <input type="text" id="broker" value="wss://broker.hivemq.com:8884/mqtt" />
+    
+    <label>Client ID:</label>
+    <input type="text" id="clientId" placeholder="Seu nome ou apelido" />
 
-  <label for="clientId">Client ID</label>
-  <input type="text" id="clientId" placeholder="Seu nome ou identificador">
+    <label>Tópico:</label>
+    <input type="text" id="topic" value="teste/chat" />
+    
+    <button onclick="connect()">Conectar</button>
+    <p id="status" class="disconnected">Desconectado</p>
+  </div>
 
-  <label for="topic">Tópico</label>
-  <input type="text" id="topic" placeholder="Ex: teste/chat">
+  <div class="form-section">
+    <label>Mensagem:</label>
+    <input type="text" id="message" placeholder="Digite sua mensagem..." />
+    <button onclick="publish()">Publicar</button>
+  </div>
 
-  <button onclick="connect()">Conectar</button>
-  <p id="status" class="disconnected">Desconectado</p>
-
-  <label for="message">Mensagem</label>
-  <input type="text" id="message" placeholder="Digite sua mensagem">
-
-  <button onclick="publish()">Publicar</button>
-
+  <h3>Mensagens Recebidas:</h3>
   <div id="log"></div>
 
   <script>
-    let client;
+    let client = null;
 
     function log(msg) {
-      const logBox = document.getElementById("log");
-      logBox.innerText += msg + "\n";
-      logBox.scrollTop = logBox.scrollHeight;
+      const logDiv = document.getElementById("log");
+      logDiv.textContent += msg + "\n";
+      logDiv.scrollTop = logDiv.scrollHeight;
     }
 
     function connect() {
@@ -102,7 +99,11 @@
       const clientId = document.getElementById("clientId").value || "anon_" + Math.random().toString(16).substr(2, 8);
       const topic = document.getElementById("topic").value;
 
-      client = mqtt.connect(broker, { clientId });
+      if (client && client.connected) {
+        client.end(true); // força desconexão anterior
+      }
+
+      client = mqtt.connect(broker, { clientId, reconnectPeriod: 1000 });
 
       client.on("connect", () => {
         log(`✅ Conectado como ${clientId}`);
@@ -147,13 +148,14 @@
       const mensagem = document.getElementById("message").value;
       const clientId = document.getElementById("clientId").value || "anon";
 
-      if (client && client.connected) {
-        const payload = JSON.stringify({ clientId, mensagem });
-        client.publish(topic, payload);
-        document.getElementById("message").value = "";
-      } else {
-        alert("Não conectado");
+      if (!client || !client.connected) {
+        alert("❌ Conecte-se primeiro ao broker MQTT");
+        return;
       }
+
+      const payload = JSON.stringify({ clientId, mensagem });
+      client.publish(topic, payload);
+      document.getElementById("message").value = "";
     }
   </script>
 </body>
