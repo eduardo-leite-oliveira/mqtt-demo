@@ -71,17 +71,18 @@
 
   <div class="grupo">
     <h2>Controlo do Motor</h2>
-    <button onclick="enviarComando('motor_25')">Ligar</button>
-    <input type="range" id="motorSlider" min="0" max="100" value="0" oninput="atualizaLabel()" onchange="enviarPWM()">
+    <button onclick="enviarRele('on')">Ligar</button>
+    <button onclick="enviarRele('off')">Desligar</button>
+    <input type="range" id="motorSlider" min="0" max="255" value="0" oninput="atualizaLabel()" onchange="enviarPWM()">
     <p>Velocidade: <span id="motorLabel">0%</span></p>
   </div>
 
   <div class="grupo">
     <h2>LED RGB</h2>
-    <button onclick="enviarComando('led_vermelho')">Vermelho</button>
-    <button onclick="enviarComando('led_verde')">Verde</button>
-    <button onclick="enviarComando('led_azul')">Azul</button>
-    <button onclick="enviarComando('led_off')">Desligar</button>
+    <button onclick="enviarLED('ledVermelho')">Vermelho</button>
+    <button onclick="enviarLED('ledVerde')">Verde</button>
+    <button onclick="enviarLED('ledAzul')">Azul</button>
+    <button onclick="desligarLEDs()">Desligar</button>
   </div>
 
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
@@ -103,32 +104,50 @@
       if (topic === topicoSub) {
         try {
           const dados = JSON.parse(message.toString());
-          document.getElementById("temp").textContent = dados.temperatura;
-          document.getElementById("hum").textContent = dados.umidade;
-          document.getElementById("piezo").textContent = dados.piezo;
-          document.getElementById("acc").textContent = dados.aceleracao;
+          document.getElementById("temp").textContent = dados.temperatura ?? "--";
+          document.getElementById("hum").textContent = dados.umidade ?? "--";
+          document.getElementById("piezo").textContent = dados.piezo ?? "--";
+          document.getElementById("acc").textContent = dados.aceleracao ?? "--";
         } catch (e) {
           console.error("Erro ao processar JSON:", e);
         }
       }
     });
 
-    function enviarComando(cmd) {
-      const msg = { comando: cmd };
+    function enviarRele(status) {
+      const msg = { rele: status };
+      client.publish(topicoPub, JSON.stringify(msg));
+    }
+
+    function enviarPWM() {
+      const v = parseInt(document.getElementById("motorSlider").value);
+      const msg = { motorPWM: v };
       client.publish(topicoPub, JSON.stringify(msg));
     }
 
     function atualizaLabel() {
       const v = document.getElementById("motorSlider").value;
-      document.getElementById("motorLabel").textContent = `${v}%`;
+      document.getElementById("motorLabel").textContent = `${Math.round(v / 2.55)}%`;
     }
 
-    function enviarPWM() {
-      const v = parseInt(document.getElementById("motorSlider").value);
-      const msg = { comando: "motor_pwm", valor: v };
+    function enviarLED(cor) {
+      const msg = {
+        ledVermelho: "off",
+        ledVerde: "off",
+        ledAzul: "off",
+        [cor]: "on"
+      };
+      client.publish(topicoPub, JSON.stringify(msg));
+    }
+
+    function desligarLEDs() {
+      const msg = {
+        ledVermelho: "off",
+        ledVerde: "off",
+        ledAzul: "off"
+      };
       client.publish(topicoPub, JSON.stringify(msg));
     }
   </script>
 </body>
 </html>
-
