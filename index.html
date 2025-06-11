@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ESP32 LilyGO - Demo MQTT</title>
+  <title>Demo MQTT</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -58,7 +58,7 @@
   </style>
 </head>
 <body>
-  <h1>ESP32 LilyGO - Controle via MQTT</h1>
+  <h1>Controlo via MQTT</h1>
   <p>Status da conexão: <span id="status">Desconectado</span></p>
 
   <div class="grupo">
@@ -70,8 +70,8 @@
   </div>
 
   <div class="grupo">
-    <h2>Controle do Motor</h2>
-    <button onclick="enviarComando('motor_25')">Ligar a 25%</button>
+    <h2>Controlo do Motor</h2>
+    <button onclick="enviarComando('motor_25')">Ligar</button>
     <input type="range" id="motorSlider" min="0" max="100" value="0" oninput="atualizaLabel()" onchange="enviarPWM()">
     <p>Velocidade: <span id="motorLabel">0%</span></p>
   </div>
@@ -86,9 +86,9 @@
 
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script>
-    const broker = "wss://broker.hivemq.com:8884/mqtt";
-    const topicoSub = "esp32/sensores";
-    const topicoPub = "esp32/comandos";
+    const broker = "wss://broker.emqx.io:8084/mqtt";
+    const topicoSub = "demo/sensores";
+    const topicoPub = "demo/comandos";
 
     const client = mqtt.connect(broker);
     const status = document.getElementById("status");
