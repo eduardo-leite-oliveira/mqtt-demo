@@ -3,25 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Demo MQTT</title>
+  <title>ESP32 LilyGO - Demo MQTT</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
-      max-width: 700px;
+      max-width: 800px;
       margin: auto;
-      background-color: #f9f9f9;
+      background-color: #f4f4f4;
     }
 
-    h1, h2, h3 {
+    h1, h2 {
       color: #2c3e50;
-      margin-top: 20px;
     }
 
     button {
-      margin: 5px 10px 5px 0;
-      padding: 10px 20px;
-      font-size: 16px;
+      margin: 5px 8px 5px 0;
+      padding: 10px 16px;
+      font-size: 15px;
       border: none;
       border-radius: 5px;
       background: #2980b9;
@@ -34,25 +33,8 @@
       cursor: pointer;
     }
 
-    pre {
-      background: #ecf0f1;
-      padding: 15px;
-      border-radius: 5px;
-      overflow-x: auto;
-    }
-
-    p {
-      font-size: 16px;
-    }
-
     input[type="range"] {
       width: 100%;
-      margin-top: 10px;
-    }
-
-    #pwmValue {
-      font-weight: bold;
-      margin-left: 10px;
     }
 
     #status {
@@ -60,137 +42,93 @@
       color: #c0392b;
     }
 
-    #status::before {
-      content: " ";
-    }
-
     #status.conectado {
       color: #27ae60;
     }
 
-    #status.conectado::before {
-      content: "🟢 ";
+    .valor {
+      font-weight: bold;
+      font-size: 18px;
+      margin-left: 5px;
     }
 
-    #comandoVoz {
-      display: inline-block;
-      font-style: italic;
-      color: #555;
-      margin-top: 5px;
+    .grupo {
+      margin-bottom: 25px;
     }
   </style>
 </head>
 <body>
+  <h1>ESP32 LilyGO - Controle via MQTT</h1>
+  <p>Status da conexão: <span id="status">Desconectado</span></p>
 
-<h1>Demo MQTT</h1>
-<p>Status da conexão: <strong id="status">Desconectado</strong></p>
+  <div class="grupo">
+    <h2>Sensores</h2>
+    <p><strong>Temperatura:</strong> <span class="valor" id="temp">--</span> °C</p>
+    <p><strong>Umidade:</strong> <span class="valor" id="hum">--</span> %</p>
+    <p><strong>Força (Piezo):</strong> <span class="valor" id="piezo">--</span></p>
+    <p><strong>Aceleração (MPU):</strong> <span class="valor" id="acc">--</span> m/s²</p>
+  </div>
 
-<h2>Sensores</h2>
-<p><strong>Temperatura:</strong> <span id="temp">--</span> °C</p>
-<p><strong>Umidade:</strong> <span id="hum">--</span> %</p>
-<p><strong>Pressão:</strong> <span id="press">--</span> hPa</p>
+  <div class="grupo">
+    <h2>Controle do Motor</h2>
+    <button onclick="enviarComando('motor_25')">Ligar a 25%</button>
+    <input type="range" id="motorSlider" min="0" max="100" value="0" oninput="atualizaLabel()" onchange="enviarPWM()">
+    <p>Velocidade: <span id="motorLabel">0%</span></p>
+  </div>
 
-<h2>Controlo LEDs</h2>
-<button onclick="sendCommand('verde_on')">Ligar LED Verde</button>
-<button onclick="sendCommand('verde_off')">Desligar LED Verde</button>
-<button onclick="sendCommand('vermelho_on')">Ligar LED Vermelho</button>
-<button onclick="sendCommand('vermelho_off')">Desligar LED Vermelho</button>
+  <div class="grupo">
+    <h2>LED RGB</h2>
+    <button onclick="enviarComando('led_vermelho')">Vermelho</button>
+    <button onclick="enviarComando('led_verde')">Verde</button>
+    <button onclick="enviarComando('led_azul')">Azul</button>
+    <button onclick="enviarComando('led_off')">Desligar</button>
+  </div>
 
-<h2>Controle por voz</h2>
-<button onclick="startVoiceRecognition()">🎤 Ouvir comando de voz</button>
-<p><strong>Último comando de voz:</strong> <span id="comandoVoz">--</span></p>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    const broker = "wss://broker.hivemq.com:8884/mqtt";
+    const topicoSub = "esp32/sensores";
+    const topicoPub = "esp32/comandos";
 
-<h2>Dimerização LED Azul</h2>
-<input type="range" id="pwmSlider" min="0" max="100" value="0" oninput="updatePWMLabel(this.value)" onchange="sendPWM(this.value)">
-<span id="pwmValue">0%</span>
+    const client = mqtt.connect(broker);
+    const status = document.getElementById("status");
 
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-<script>
-  const brokerUrl = "wss://broker.hivemq.com:8884/mqtt";
-  const sensorTopic = "nano33/sensores";
-  const commandoTopic = "nano33/comandos";
+    client.on("connect", () => {
+      status.textContent = "Conectado ✅";
+      status.classList.add("conectado");
+      client.subscribe(topicoSub);
+    });
 
-  const client = mqtt.connect(brokerUrl);
-  const statusEl = document.getElementById("status");
-
-  client.on("connect", () => {
-    statusEl.textContent = "Conectado ✅";
-    client.subscribe(sensorTopic);
-  });
-
-  client.on("error", (err) => {
-    statusEl.textContent = "Erro: " + err.message;
-  });
-
-  client.on("message", (topic, message) => {
-    if (topic === sensorTopic) {
-      try {
-        const dados = JSON.parse(message.toString());
-        document.getElementById("temp").textContent = dados.temperatura;
-        document.getElementById("hum").textContent = dados.umidade;
-        document.getElementById("press").textContent = dados.pressao;
-        document.getElementById("sensorData").textContent = JSON.stringify(dados, null, 2);
-      } catch (e) {
-        console.error("Erro ao processar JSON:", e);
+    client.on("message", (topic, message) => {
+      if (topic === topicoSub) {
+        try {
+          const dados = JSON.parse(message.toString());
+          document.getElementById("temp").textContent = dados.temperatura;
+          document.getElementById("hum").textContent = dados.umidade;
+          document.getElementById("piezo").textContent = dados.piezo;
+          document.getElementById("acc").textContent = dados.aceleracao;
+        } catch (e) {
+          console.error("Erro ao processar JSON:", e);
+        }
       }
-    }
-  });
+    });
 
-  function sendCommand(cmd) {
-    const comando = { command: cmd };
-    client.publish(comandoTopic, JSON.stringify(comando));
-  }
-  
-  function updatePWMLabel(value) {
-    document.getElementById("pwmValue").textContent = value + "%";
-  }
-
-  function sendPWM(value) {
-    const msg = { command: "azul_pwm", value: parseInt(value) };
-    if (client.connected) {
-      client.publish(commandTopic, JSON.stringify(msg));
-    } else {
-      alert("Não conectado ao broker MQTT");
-    }
-  }
-
-  // Reconhecimento de voz
-  function startVoiceRecognition() {
-    if (!('webkitSpeechRecognition' in window)) {
-      alert("Seu navegador não suporta reconhecimento de voz");
-      return;
+    function enviarComando(cmd) {
+      const msg = { comando: cmd };
+      client.publish(topicoPub, JSON.stringify(msg));
     }
 
-    const recognition = new webkitSpeechRecognition();
-    recognition.lang = "pt-PT"; // ou "pt-BR"
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    function atualizaLabel() {
+      const v = document.getElementById("motorSlider").value;
+      document.getElementById("motorLabel").textContent = `${v}%`;
+    }
 
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript.toLowerCase();
-      console.log("Voz detectada:", transcript);
-      document.getElementById("comandoVoz").textContent = transcript;
-
-      if (transcript.includes("ligar led verde")) {
-        sendCommand("verde_on");
-      } else if (transcript.includes("ligar led vermelho")) {
-        sendCommand("vermelho_on");
-      } else if (transcript.includes("desligar led vermelho")) {
-        sendCommand("vermelho_off");
-      } else if (transcript.includes("desligar led verde")) {
-        sendCommand("verde_off");
-      } else {
-        alert("Comando de voz não reconhecido: " + transcript);
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Erro no reconhecimento de voz:", event.error);
-    };
-
-    recognition.start();
-  }
-</script>
-
+    function enviarPWM() {
+      const v = parseInt(document.getElementById("motorSlider").value);
+      const msg = { comando: "motor_pwm", valor: v };
+      client.publish(topicoPub, JSON.stringify(msg));
+    }
+  </script>
 </body>
 </html>
+
