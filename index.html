@@ -146,14 +146,24 @@
       }
     });
 
-    function enviarRele(status) {
-      const msg = { rele: status };
+    function enviarLED(cor) {
+      const msg = { led: cor };  // EX: { led: "red" }
       client.publish(topicoPub, JSON.stringify(msg));
     }
-
+    
+    function desligarLEDs() {
+      const msg = { led: "off" };  // ou "none"
+      client.publish(topicoPub, JSON.stringify(msg));
+    }
+    
+    function enviarRele(status) {
+      const msg = { motor: status === "on" };  // true/false
+      client.publish(topicoPub, JSON.stringify(msg));
+    }
+    
     function enviarPWM() {
       const v = parseInt(document.getElementById("motorSlider").value);
-      const msg = { motorPWM: v };
+      const msg = { pwm: v };
       client.publish(topicoPub, JSON.stringify(msg));
     }
 
@@ -162,24 +172,6 @@
       document.getElementById("motorLabel").textContent = `${Math.round(v / 2.55)}%`;
     }
 
-    function enviarLED(cor) {
-      const msg = {
-        ledVermelho: "off",
-        ledVerde: "off",
-        ledAzul: "off",
-        [cor]: "on"
-      };
-      client.publish(topicoPub, JSON.stringify(msg));
-    }
-
-    function desligarLEDs() {
-      const msg = {
-        ledVermelho: "off",
-        ledVerde: "off",
-        ledAzul: "off"
-      };
-      client.publish(topicoPub, JSON.stringify(msg));
-    }
   </script>
 </body>
 </html>
