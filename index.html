@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
   <title>Demo MQTT</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -12,11 +12,11 @@
       margin: auto;
       background-color: #f4f4f4;
     }
-  
+
     h1, h2 {
       color: #2c3e50;
     }
-  
+
     button {
       margin: 5px 8px 5px 0;
       padding: 10px 16px;
@@ -29,149 +29,145 @@
       min-width: 100px;
       text-align: center;
     }
-  
+
     button:hover {
       background: #3498db;
       cursor: pointer;
     }
-  
+
     input[type="range"] {
       width: 100%;
     }
-  
+
     #status {
       font-weight: bold;
       color: #c0392b;
     }
-  
+
     #status.conectado {
       color: #27ae60;
     }
-  
+
     .valor {
       font-weight: bold;
       font-size: 18px;
       margin-left: 5px;
     }
-  
+
     .grupo {
       margin-bottom: 25px;
     }
-  
+
     .linha-sensores {
       display: flex;
-      justify-content: space-between;
+      flex-wrap: wrap;
       gap: 20px;
-      flex-wrap: nowrap; /* Impede quebra */
     }
-    
+
     .coluna {
-      flex: 1 1 50%;
-      min-width: 0;
+      flex: 1 1 48%;
+      min-width: 200px;
     }
-  
+
     .botoes-led {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
     }
   </style>
-  
-  <body>
-    <h1>Demo MQTT</h1>
-    <p>Status da conexão ao Broker: <span id="status">Desconectado</span></p>
-  
-    <div class="grupo">
-      <h2>Sensores</h2>
-      <div class="linha-sensores">
-        <div class="coluna">
-          <p><strong>Temperatura:</strong> <span class="valor" id="temp">--</span> °C</p>
-          <p><strong>Umidade:</strong> <span class="valor" id="hum">--</span> %</p>
-          <p><strong>Força (Piezo):</strong> <span class="valor" id="piezo">--</span></p>
-        </div>
-        <div class="coluna">
-          <p><strong>Aceleração:</strong></p>
-          <p>X: <span class="valor" id="accX">--</span> m/s²</p>
-          <p>Y: <span class="valor" id="accY">--</span> m/s²</p>
-          <p>Z: <span class="valor" id="accZ">--</span> m/s²</p>
-        </div>
+</head>
+<body>
+  <h1>Demo MQTT</h1>
+  <p>Status da conexão ao Broker: <span id="status">Desconectado</span></p>
+
+  <div class="grupo">
+    <h2>Sensores</h2>
+    <div class="linha-sensores">
+      <div class="coluna">
+        <p><strong>Temperatura:</strong> <span class="valor" id="temp">--</span> °C</p>
+        <p><strong>Umidade:</strong> <span class="valor" id="hum">--</span> %</p>
+        <p><strong>Força (Piezo):</strong> <span class="valor" id="piezo">--</span></p>
+      </div>
+      <div class="coluna">
+        <p><strong>Aceleração:</strong></p>
+        <p>X: <span class="valor" id="accX">--</span> m/s²</p>
+        <p>Y: <span class="valor" id="accY">--</span> m/s²</p>
+        <p>Z: <span class="valor" id="accZ">--</span> m/s²</p>
       </div>
     </div>
-  
-    <div class="grupo">
-      <h2>Controlo do Motor</h2>
-      <button onclick="enviarRele('on')">Ligar</button>
-      <button onclick="enviarRele('off')">Desligar</button>
-      <input type="range" id="motorSlider" min="0" max="255" value="0" oninput="atualizaLabel()" onchange="enviarPWM()">
-      <p>Velocidade: <span id="motorLabel">0%</span></p>
+  </div>
+
+  <div class="grupo">
+    <h2>Controlo do Motor</h2>
+    <button onclick="enviarRele('on')">Ligar</button>
+    <button onclick="enviarRele('off')">Desligar</button>
+    <input type="range" id="motorSlider" min="0" max="255" value="0" oninput="atualizaLabel()" onchange="enviarPWM()">
+    <p>Velocidade: <span id="motorLabel">0%</span></p>
+  </div>
+
+  <div class="grupo">
+    <h2>LED RGB</h2>
+    <div class="botoes-led">
+      <button onclick="enviarLED('red')">Vermelho</button>
+      <button onclick="enviarLED('green')">Verde</button>
+      <button onclick="enviarLED('blue')">Azul</button>
+      <button onclick="desligarLEDs()">Desligar</button>
     </div>
-  
-    <div class="grupo">
-      <h2>LED RGB</h2>
-      <div class="botoes-led">
-        <button onclick="enviarLED('ledVermelho')">Vermelho</button>
-        <button onclick="enviarLED('ledVerde')">Verde</button>
-        <button onclick="enviarLED('ledAzul')">Azul</button>
-        <button onclick="desligarLEDs()">Desligar</button>
-      </div>
-    </div>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  </div>
+
   <script>
-    const broker = "wss://broker.emqx.io:8084/mqtt";
     const topicoSub = "demo/sensores";
     const topicoPub = "demo/comandos";
 
-    const client = mqtt.connect(broker);
-    const status = document.getElementById("status");
+    const client = mqtt.connect("wss://broker.emqx.io:8084/mqtt");
 
     client.on("connect", () => {
-      status.textContent = "Conectado ✅";
-      status.classList.add("conectado");
+      console.log("Conectado!");
+      document.getElementById("status").textContent = "Conectado";
+      document.getElementById("status").classList.add("conectado");
       client.subscribe(topicoSub);
     });
 
     client.on("message", (topic, message) => {
-      if (topic === topicoSub) {
-        try {
-          const dados = JSON.parse(message.toString());
-          document.getElementById("temp").textContent = dados.temperatura ?? "--";
-          document.getElementById("hum").textContent = dados.umidade ?? "--";
-          document.getElementById("piezo").textContent = dados.piezo ?? "--";
-          document.getElementById("accX").textContent = dados.aceleracao?.x?.toFixed(2) ?? "--";
-          document.getElementById("accY").textContent = dados.aceleracao?.y?.toFixed(2) ?? "--";
-          document.getElementById("accZ").textContent = dados.aceleracao?.z?.toFixed(2) ?? "--";
-        } catch (e) {
-          console.error("Erro ao processar JSON:", e);
-        }
+      try {
+        const dados = JSON.parse(message.toString());
+        document.getElementById("temp").textContent = dados["Temperature (C)"]?.toFixed(1) ?? "--";
+        document.getElementById("hum").textContent = dados["Humidity (%)"]?.toFixed(1) ?? "--";
+        document.getElementById("piezo").textContent = dados["Force (N)"] ?? "--";
+        document.getElementById("accX").textContent = dados.accX?.toFixed(2) ?? "--";
+        document.getElementById("accY").textContent = dados.accY?.toFixed(2) ?? "--";
+        document.getElementById("accZ").textContent = dados.accZ?.toFixed(2) ?? "--";
+      } catch (e) {
+        console.error("Erro ao processar mensagem:", e);
       }
     });
 
     function enviarLED(cor) {
-      const msg = { led: cor };  // EX: { led: "red" }
+      const msg = { led: cor };
       client.publish(topicoPub, JSON.stringify(msg));
     }
-    
+
     function desligarLEDs() {
-      const msg = { led: "off" };  // ou "none"
+      const msg = { led: "off" };
       client.publish(topicoPub, JSON.stringify(msg));
     }
-    
+
     function enviarRele(status) {
-      const msg = { motor: status === "on" };  // true/false
+      const msg = { motor: status === "on" };
       client.publish(topicoPub, JSON.stringify(msg));
     }
-    
+
     function enviarPWM() {
-      const v = parseInt(document.getElementById("motorSlider").value);
-      const msg = { pwm: v };
+      const valor = parseInt(document.getElementById("motorSlider").value);
+      const msg = { pwm: valor };
       client.publish(topicoPub, JSON.stringify(msg));
     }
 
     function atualizaLabel() {
-      const v = document.getElementById("motorSlider").value;
-      document.getElementById("motorLabel").textContent = `${Math.round(v / 2.55)}%`;
+      const v = parseInt(document.getElementById("motorSlider").value);
+      document.getElementById("motorLabel").textContent = `${Math.round((v / 255) * 100)}%`;
     }
-
   </script>
 </body>
 </html>
+
