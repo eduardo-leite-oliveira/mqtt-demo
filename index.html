@@ -61,13 +61,13 @@
     .linha-sensores {
       display: flex;
       justify-content: space-between;
-      flex-wrap: wrap;
       gap: 20px;
+      flex-wrap: nowrap; /* Impede quebra */
     }
-  
+    
     .coluna {
-      flex: 1 1 48%;
-      min-width: 200px;
+      flex: 1 1 50%;
+      min-width: 0;
     }
   
     .botoes-led {
