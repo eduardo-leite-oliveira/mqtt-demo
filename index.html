@@ -76,7 +76,45 @@
       gap: 10px;
     }
   </style>
-
+  
+  <body>
+    <h1>Demo MQTT</h1>
+    <p>Status da conexão ao Broker: <span id="status">Desconectado</span></p>
+  
+    <div class="grupo">
+      <h2>Sensores</h2>
+      <div class="linha-sensores">
+        <div class="coluna">
+          <p><strong>Temperatura:</strong> <span class="valor" id="temp">--</span> °C</p>
+          <p><strong>Umidade:</strong> <span class="valor" id="hum">--</span> %</p>
+          <p><strong>Força (Piezo):</strong> <span class="valor" id="piezo">--</span></p>
+        </div>
+        <div class="coluna">
+          <p><strong>Aceleração:</strong></p>
+          <p>X: <span class="valor" id="accX">--</span> m/s²</p>
+          <p>Y: <span class="valor" id="accY">--</span> m/s²</p>
+          <p>Z: <span class="valor" id="accZ">--</span> m/s²</p>
+        </div>
+      </div>
+    </div>
+  
+    <div class="grupo">
+      <h2>Controlo do Motor</h2>
+      <button onclick="enviarRele('on')">Ligar</button>
+      <button onclick="enviarRele('off')">Desligar</button>
+      <input type="range" id="motorSlider" min="0" max="255" value="0" oninput="atualizaLabel()" onchange="enviarPWM()">
+      <p>Velocidade: <span id="motorLabel">0%</span></p>
+    </div>
+  
+    <div class="grupo">
+      <h2>LED RGB</h2>
+      <div class="botoes-led">
+        <button onclick="enviarLED('ledVermelho')">Vermelho</button>
+        <button onclick="enviarLED('ledVerde')">Verde</button>
+        <button onclick="enviarLED('ledAzul')">Azul</button>
+        <button onclick="desligarLEDs()">Desligar</button>
+      </div>
+    </div>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script>
     const broker = "wss://broker.emqx.io:8084/mqtt";
